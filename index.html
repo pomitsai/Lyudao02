@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>綠島蔚藍家旅 | 2026 客製化行程規劃</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome (for icons, avoiding inline SVGs) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+        
+        /* Timeline styling */
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 20px;
+            width: 4px;
+            background: #cbd5e1;
+            z-index: 0;
+        }
+        
+        .tab-active {
+            border-bottom: 3px solid #0ea5e9;
+            color: #0ea5e9;
+            font-weight: bold;
+        }
+
+        /* Chart container constraint classes */
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 300px;
+        }
+        @media (min-width: 768px) {
+            .chart-wrapper {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans selection:bg-sky-200 selection:text-sky-900">
+
+    <!-- Chosen Palette: Ocean Breeze (Slate-50 background, Sky/Cyan accents for water feel, Slate-800 for readable text) -->
+    <!-- Application Structure Plan: 
+         1. Header/Nav: Sticky navigation for quick access to key travel sections.
+         2. Hero Section: Sets the mood, displays trip summary (Taichung -> Green Island, Family Trip).
+         3. Transportation Analysis: A critical decision point. Uses Chart.js to compare Time vs. Cost for Boat vs. Plane, helping the user decide based on their "CP value" and "Kids" constraint.
+         4. Accommodation: A curated grid of 10 options focusing on "Sea View" and "Quiet/Convenient", filtering logic not needed here but clear categorization is.
+         5. Dynamic Itinerary: The core feature. A Tab-based interactive timeline. Users click Day 1-4 to switch views. This prevents scrolling fatigue. Each item has Google Maps links.
+         6. Gourmet Map: A filterable grid (Seafood, Snacks, Dessert) to allow users to explore food options based on mood.
+         7. Preparation Checklist: Interactive checkboxes for packing.
+    -->
+    <!-- Visualization & Content Choices:
+         1. Transport Chart: Goal -> Compare Cost vs Time. Method -> Chart.js Bar Chart (Double dataset). Interaction -> Tooltips show exact TWD/Minutes. Justification -> Visualizes the trade-off between the expensive plane and slower boat.
+         2. Itinerary Timeline: Goal -> Show flow of time. Method -> HTML/CSS Timeline. Interaction -> Clickable Maps/Tabs. Justification -> Linear progression is best for itineraries.
+         3. Food Filter: Goal -> Organize choices. Method -> JS-based filtering of DOM elements. Justification -> User might only want "Dessert" at a specific moment.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used (FontAwesome webfont used instead). NO Mermaid JS used. -->
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="text-xl font-bold text-sky-600 tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-umbrella-beach"></i> 綠島蔚藍家旅
+                </div>
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex space-x-8">
+                    <button onclick="scrollToSection('transport')" class="hover:text-sky-600 transition-colors">交通分析</button>
+                    <button onclick="scrollToSection('accommodation')" class="hover:text-sky-600 transition-colors">住宿推薦</button>
+                    <button onclick="scrollToSection('itinerary')" class="hover:text-sky-600 transition-colors">每日行程</button>
+                    <button onclick="scrollToSection('food')" class="hover:text-sky-600 transition-colors">美食地圖</button>
+                    <button onclick="scrollToSection('prep')" class="hover:text-sky-600 transition-colors">行前準備</button>
+                </div>
+                <!-- Mobile Menu Button (Functional logic added in script) -->
+                <button id="mobile-menu-btn" class="md:hidden text-slate-600 hover:text-sky-600">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+            <!-- Mobile Menu Dropdown -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4 bg-white border-t border-slate-100">
+                <div class="flex flex-col space-y-2 mt-2">
+                    <button onclick="scrollToSection('transport')" class="px-4 py-2 hover:bg-slate-50 text-left">交通分析</button>
+                    <button onclick="scrollToSection('accommodation')" class="px-4 py-2 hover:bg-slate-50 text-left">住宿推薦</button>
+                    <button onclick="scrollToSection('itinerary')" class="px-4 py-2 hover:bg-slate-50 text-left">每日行程</button>
+                    <button onclick="scrollToSection('food')" class="px-4 py-2 hover:bg-slate-50 text-left">美食地圖</button>
+                    <button onclick="scrollToSection('prep')" class="px-4 py-2 hover:bg-slate-50 text-left">行前準備</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="relative bg-gradient-to-br from-sky-100 to-indigo-100 py-20 px-4">
+        <div class="container mx-auto text-center max-w-4xl">
+            <span class="inline-block px-3 py-1 bg-sky-200 text-sky-800 rounded-full text-sm font-semibold mb-4">2026 親子避暑首選</span>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-800 mb-6 leading-tight">
+                台中出發：綠島四天三夜 <br><span class="text-sky-600">慢活・親子・海洋之旅</span>
+            </h1>
+            <p class="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">
+                專為家庭設計的高CP值行程。避開人擠人的走馬看花，享受溫泉日出、玻璃船海底世界，以及最道地的火燒島美食。
+            </p>
+            <div class="flex flex-wrap justify-center gap-4 text-sm font-medium text-slate-500">
+                <div class="bg-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                    <i class="fa-regular fa-calendar"></i> 2026/08/21 - 08/24
+                </div>
+                <div class="bg-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-location-dot"></i> 台中 <i class="fa-solid fa-arrow-right text-xs"></i> 台東 <i class="fa-solid fa-arrow-right text-xs"></i> 綠島
+                </div>
+                <div class="bg-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2">
+                    <i class="fa-solid fa-users"></i> 親子家庭 (適合小孩)
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Transportation Section -->
+    <section id="transport" class="py-16 container mx-auto px-4">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-3xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                <span class="bg-sky-500 w-2 h-8 rounded-full inline-block"></span>
+                交通方案分析
+            </h2>
+            <p class="text-slate-600 mb-8 text-lg">
+                從台中前往綠島主要有兩個階段：先抵達台東，再轉乘船或飛機前往綠島。以下為您分析兩種主要方案的成本與時間效益，建議家庭旅遊考量行李與預算，選擇 <strong class="text-sky-600">方案 A (火車+船)</strong> 為最佳 CP 值選擇。
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <!-- Text Details -->
+                <div class="space-y-6">
+                    <!-- Option A -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 relative overflow-hidden group hover:border-sky-300 transition-all">
+                        <div class="absolute top-0 right-0 bg-sky-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">推薦首選 (CP值高)</div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-train text-sky-600"></i> 台鐵 + <i class="fa-solid fa-ferry text-sky-600"></i> 客輪
+                        </h3>
+                        <ul class="space-y-2 text-sm text-slate-600">
+                            <li><span class="font-semibold text-slate-800">路線：</span> 台中火車站 ➜ 台東火車站 ➜ (計程車/公車) ➜ 富岡漁港 ➜ 綠島南寮漁港</li>
+                            <li><span class="font-semibold text-slate-800">費用估算：</span> 約 $2,000 - $2,300 TWD /人 (單程總和)</li>
+                            <li><span class="font-semibold text-slate-800">優點：</span> 班次多、行李限制少、費用較省。</li>
+                            <li><span class="font-semibold text-slate-800">缺點：</span> 船程約 50 分鐘，若遇風浪需備暈船藥。</li>
+                        </ul>
+                    </div>
+
+                    <!-- Option B -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 group hover:border-pink-300 transition-all">
+                        <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-train text-pink-500"></i> 台鐵 + <i class="fa-solid fa-plane text-pink-500"></i> 飛機 (德安航空)
+                        </h3>
+                        <ul class="space-y-2 text-sm text-slate-600">
+                            <li><span class="font-semibold text-slate-800">路線：</span> 台中火車站 ➜ 台東火車站 ➜ (計程車) ➜ 台東豐年機場 ➜ 綠島機場</li>
+                            <li><span class="font-semibold text-slate-800">費用估算：</span> 約 $3,500 - $4,000 TWD /人 (單程總和)</li>
+                            <li><span class="font-semibold text-slate-800">優點：</span> 飛行僅需 15 分鐘，舒適快速。</li>
+                            <li><span class="font-semibold text-slate-800">缺點：</span> 機位極少(19人座小飛機)、難搶票、易受天氣停飛。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <h4 class="text-center font-semibold text-slate-500 mb-4">單人來回交通：費用 vs 時間比較</h4>
+                    <div class="chart-wrapper">
+                        <canvas id="transportChart"></canvas>
+                    </div>
+                    <div class="text-center mt-2 text-xs text-slate-400">* 數據包含台中-台東火車時間與費用</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Accommodation Section -->
+    <section id="accommodation" class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                    <span class="bg-sky-500 w-2 h-8 rounded-full inline-block"></span>
+                    精選住宿推薦
+                </h2>
+                <p class="text-slate-600 mb-8 text-lg">
+                    根據您「有小孩」、「預算考量」與「喜愛自然」的需求，我們精選了以下三個區域的 10 間高評價住宿。建議選擇 <strong class="text-sky-600">柴口/公館區域</strong>，環境較安靜且適合親子，且容易前往海邊。
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Cards injected by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Itinerary Section -->
+    <section id="itinerary" class="py-16 bg-slate-50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                    <span class="bg-sky-500 w-2 h-8 rounded-full inline-block"></span>
+                    四天三夜每日行程
+                </h2>
+                <p class="text-slate-600 mb-8 text-lg">
+                    行程安排原則：<strong class="text-sky-600">動線順暢不繞路</strong>。考慮到 8 月天氣炎熱，中午時段多安排室內或休憩，早晚氣溫舒適時進行戶外活動。
+                </p>
+
+                <!-- Day Tabs -->
+                <div class="flex border-b border-slate-300 mb-8 overflow-x-auto">
+                    <button class="day-tab px-6 py-3 font-medium text-slate-500 hover:text-sky-600 transition-colors whitespace-nowrap" data-day="1">
+                        Day 1: 初見綠島
+                    </button>
+                    <button class="day-tab px-6 py-3 font-medium text-slate-500 hover:text-sky-600 transition-colors whitespace-nowrap" data-day="2">
+                        Day 2: 海洋探險
+                    </button>
+                    <button class="day-tab px-6 py-3 font-medium text-slate-500 hover:text-sky-600 transition-colors whitespace-nowrap" data-day="3">
+                        Day 3: 人文秘境
+                    </button>
+                    <button class="day-tab px-6 py-3 font-medium text-slate-500 hover:text-sky-600 transition-colors whitespace-nowrap" data-day="4">
+                        Day 4: 滿載而歸
+                    </button>
+                </div>
+
+                <!-- Timeline Content -->
+                <div id="itinerary-content" class="relative">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Food Map Section -->
+    <section id="food" class="py-16 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                    <span class="bg-sky-500 w-2 h-8 rounded-full inline-block"></span>
+                    必吃美食地圖
+                </h2>
+                <p class="text-slate-600 mb-8 text-lg">
+                    綠島不僅有海鮮，還有獨特的「海草冰」與「鹿肉料理」。點擊篩選器快速尋找您想吃的美味。
+                </p>
+
+                <!-- Filters -->
+                <div class="flex flex-wrap gap-3 mb-8">
+                    <button onclick="filterFood('all')" class="food-filter-btn px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-sky-100 hover:text-sky-700 active-filter font-medium transition-colors ring-2 ring-transparent focus:ring-sky-300" data-filter="all">全部</button>
+                    <button onclick="filterFood('seafood')" class="food-filter-btn px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-sky-100 hover:text-sky-700 transition-colors ring-2 ring-transparent focus:ring-sky-300" data-filter="seafood">海鮮/熱炒</button>
+                    <button onclick="filterFood('snack')" class="food-filter-btn px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-sky-100 hover:text-sky-700 transition-colors ring-2 ring-transparent focus:ring-sky-300" data-filter="snack">在地小吃/早餐</button>
+                    <button onclick="filterFood('dessert')" class="food-filter-btn px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-sky-100 hover:text-sky-700 transition-colors ring-2 ring-transparent focus:ring-sky-300" data-filter="dessert">冰品/甜點</button>
+                </div>
+
+                <!-- Food Grid -->
+                <div id="food-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prep Checklist -->
+    <section id="prep" class="py-16 bg-slate-800 text-slate-100">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                    <span class="bg-sky-500 w-2 h-8 rounded-full inline-block"></span>
+                    行前準備清單
+                </h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-sky-300">必備證件與金錢</h3>
+                        <ul class="space-y-3" id="checklist-docs">
+                            <!-- Items injected -->
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-sky-300">衣物與生活用品</h3>
+                        <ul class="space-y-3" id="checklist-items">
+                            <!-- Items injected -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-slate-900 text-slate-400 py-8 text-center border-t border-slate-700">
+        <div class="container mx-auto px-4">
+            <p class="mb-2">© 2026 綠島蔚藍家旅規劃</p>
+            <p class="text-sm">此行程專為家庭旅遊設計，實際交通時刻表請以 2026 年台鐵與船運公司公告為準。</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Data Definitions ---
+
+        const accommodationData = [
+            { name: "綠島好望角無敵海景民宿", area: "公館", tags: ["海景", "安靜"], desc: "擁有絕佳海景視野，房間設計現代，適合喜歡聽海聲入睡的家庭。", price: "$$$" },
+            { name: "綠島9號菁英渡假村", area: "南寮", tags: ["便利", "質感"], desc: "靠近南寮漁港與大街，生活機能方便，裝潢頗具設計感。", price: "$$$" },
+            { name: "綠島House 16", area: "柴口", tags: ["親子", "溫馨"], desc: "獨棟建築，隱私性高，提供管家式服務，對小孩友善。", price: "$$" },
+            { name: "TORO 觀海民宿", area: "柴口", tags: ["海景", "高級"], desc: "位於柴口浮潛區旁，走路可到海邊，景觀極佳。", price: "$$$$" },
+            { name: "綠島長慶民宿", area: "公館", tags: ["古厝", "CP值"], desc: "傳統閩南建築改建，別有一番風味，價格親民。", price: "$" },
+            { name: "綠島夏卡爾民宿", area: "公館", tags: ["海景", "色彩"], desc: "色彩繽紛的建築，面海房型景觀優美，早餐豐盛。", price: "$$" },
+            { name: "綠島海灣會館", area: "南寮", tags: ["便利", "飯店式"], desc: "靠近市區，類似飯店管理，設施較為標準齊全。", price: "$$" },
+            { name: "綠島藍色海灣", area: "柴口", tags: ["海景", "寬敞"], desc: "房間寬敞明亮，適合家庭入住，前方就是大海。", price: "$$" },
+            { name: "綠島過日子民宿", area: "公館", tags: ["文青", "慢活"], desc: "風格清新簡約，氛圍放鬆，適合不趕行程的旅客。", price: "$$" },
+            { name: "綠島涵館民宿", area: "溫泉", tags: ["安靜", "星空"], desc: "靠近朝日溫泉，遠離光害，晚上適合看星星。", price: "$$" }
+        ];
+
+        const itineraryData = {
+            1: [
+                { time: "09:00", icon: "fa-train", title: "台中出發", desc: "搭乘台鐵普悠瑪/自強號前往台東火車站 (約 3.5 - 4 小時)。可以在火車上享用便當。", loc: "台中火車站" },
+                { time: "13:30", icon: "fa-taxi", title: "前往富岡漁港", desc: "抵達台東後，轉乘計程車或接駁車前往富岡漁港 (約 20 分鐘)。", loc: "台東火車站" },
+                { time: "14:30", icon: "fa-ferry", title: "乘船前往綠島", desc: "搭乘客輪 (凱旋/天王星等)，建議提早 30 分鐘取票並服用暈船藥。航程約 50 分鐘。", loc: "富岡漁港" },
+                { time: "15:30", icon: "fa-hotel", title: "抵達 & 民宿 Check-in", desc: "抵達南寮漁港，領取租賃機車 (記得帶駕照!)，前往民宿放行李。加油站就在港口附近，建議先加油。", loc: "綠島南寮漁港" },
+                { time: "16:30", icon: "fa-sun", title: "綠島燈塔 & 烏油窟", desc: "前往綠島燈塔拍照，旁邊的烏油窟是天然潟湖，水淺平靜，非常適合小孩玩水。", loc: "綠島燈塔" },
+                { time: "18:00", icon: "fa-utensils", title: "晚餐：海鮮料理", desc: "前往南寮大街享用新鮮海產。推薦：炒鹿肉(可選豬肉)、鮪魚醬飯。", loc: "綠島南寮大街" },
+            ],
+            2: [
+                { time: "09:00", icon: "fa-water", title: "玻璃船 or 浮潛", desc: "親子行程首選【玻璃底船】免下水看珊瑚礁；若小孩較大可嘗試【柴口/石朗浮潛】，教練帶領很安全。", loc: "綠島石朗潛水區" },
+                { time: "12:00", icon: "fa-utensils", title: "午餐：特色海草冰", desc: "天氣炎熱，中午吃簡單的小吃配上一大碗海草冰消暑。", loc: "綠島派吃所" },
+                { time: "14:00", icon: "fa-bed", title: "民宿午休", desc: "避開綠島正午毒辣的太陽，回民宿休息充電。", loc: "" },
+                { time: "15:30", icon: "fa-motorcycle", title: "環島探險 (北岸)", desc: "騎車環島：人權紀念公園 → 綠洲山莊 (監獄文化) → 燕子洞 (視體力前往)。", loc: "綠島人權文化園區" },
+                { time: "17:30", icon: "fa-camera", title: "牛頭山看日落", desc: "牛頭山草原平坦遼闊，是欣賞夕陽與海景的絕佳地點。", loc: "牛頭山" },
+                { time: "19:00", icon: "fa-fire", title: "晚餐：露天BBQ", desc: "綠島特色活動，享受吃到飽的露天烤肉，氣氛熱鬧。", loc: "阿剛碳烤" }
+            ],
+            3: [
+                { time: "05:00", icon: "fa-spa", title: "朝日溫泉看日出", desc: "世界唯三的海底溫泉。建議早起邊泡湯邊看日出，有小孩也可煮溫泉蛋/玉米。", loc: "朝日溫泉" },
+                { time: "08:00", icon: "fa-coffee", title: "回民宿補眠/早餐", desc: "享受完日出後，回民宿吃早餐並稍作補眠。", loc: "" },
+                { time: "10:30", icon: "fa-tree", title: "環島探險 (東岸)", desc: "小長城步道 (眺望哈巴狗與睡美人岩) → 孔子岩。小長城步道輕鬆好走，風景極佳。", loc: "小長城" },
+                { time: "12:30", icon: "fa-utensils", title: "午餐：在地風味", desc: "品嚐綠島芡粿、魚粽等傳統美食。", loc: "觀音洞" },
+                { time: "14:30", icon: "fa-dragon", title: "大白沙踩水", desc: "綠島最美麗的沙灘之一，有著名的海上步道，適合踏浪拍照。", loc: "大白沙潛水區" },
+                { time: "16:30", icon: "fa-shop", title: "逛街採買紀念品", desc: "購買飛魚餅、海草麻糬、明信片。還可以去「大哥的故事」買趣味T恤。", loc: "綠島大街" },
+            ],
+            4: [
+                { time: "09:00", icon: "fa-mug-hot", title: "悠閒早餐", desc: "享受在綠島的最後一個早晨，整理行李。", loc: "" },
+                { time: "10:30", icon: "fa-check", title: "退房 & 還車", desc: "辦理退房，將行李寄放或直接前往港口還機車。", loc: "" },
+                { time: "11:00", icon: "fa-gift", title: "免稅店逛逛", desc: "靠近南寮漁港有免稅商店，等待船班時可以吹冷氣逛逛。", loc: "綠島免稅店" },
+                { time: "12:30", icon: "fa-ferry", title: "搭船返回台東", desc: "搭乘船班返回富岡漁港。若海象不佳記得再次服用暈船藥。", loc: "綠島南寮漁港" },
+                { time: "14:30", icon: "fa-train", title: "台東火車站返程", desc: "搭乘計程車前往火車站，轉乘台鐵返回台中溫暖的家。", loc: "台東火車站" }
+            ]
+        };
+
+        const foodData = [
+            { type: "seafood", name: "阿剛碳烤", desc: "250元吃到飽，露天氛圍極佳，食材新鮮度尚可，主要是吃氣氛。", loc: "阿剛碳烤" },
+            { type: "seafood", name: "非炒不可海鮮食堂", desc: "熱炒口味好，裝潢有特色，推薦必點各式海鮮熱炒。", loc: "非炒不可海鮮食堂" },
+            { type: "seafood", name: "池塘有魚", desc: "老字號餐廳，推薦章魚捲、鮪魚辣椒醬。", loc: "池塘有魚" },
+            { type: "seafood", name: "竹屋美食城", desc: "料理實在，推薦鹿肉料理與炒海香菇。", loc: "竹屋美食城" },
+            { type: "snack", name: "綠島香酥海草蛋餅", desc: "早餐好選擇，酥脆餅皮加上獨特海草味。", loc: "綠島香酥海草蛋餅" },
+            { type: "snack", name: "觀音洞芡粿", desc: "傳統古早味，口感像QQ的鹹年糕，使用花生粉與九層塔。", loc: "觀音洞" },
+            { type: "dessert", name: "綠島派吃所", desc: "特色海草冰，造型可愛，份量大，消暑首選。", loc: "綠島派吃所" },
+            { type: "dessert", name: "星光碼頭貝殼海草冰", desc: "位於大街上，使用貝殼盛裝，拍照好看。", loc: "星光碼頭" },
+            { type: "dessert", name: "甘泉小站", desc: "黑糖海草冰沙是招牌，不會太甜膩。", loc: "甘泉小站" },
+            { type: "snack", name: "阿嬤的蔥Q餅", desc: "類似蔥油餅但口感更Q彈，適合下午茶點心。", loc: "阿嬤的蔥Q餅" }
+        ];
+
+        const checklistData = {
+            docs: ["身分證 / 健保卡 (搭船/飛機/住宿必備)", "機車駕照 (非常重要!)", "現金 (部分店家不收支付)", "船票/火車票確認代碼"],
+            items: ["暈船藥 (建議在上船前30分鐘服用)", "海洋友善防曬乳 (保護珊瑚)", "墨鏡 / 帽子 / 防曬外套", "泳衣 / 泳褲 / 膠鞋", "手機防水袋", "個人盥洗用具 (響應環保)"]
+        };
+
+        // --- Logic Implementation ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            renderAccommodation();
+            renderItinerary(1); // Default to Day 1
+            renderFood('all');  // Default to All food
+            renderChecklist();
+            setupMobileMenu();
+        });
+
+        // 1. Navigation Logic
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            const offset = 80; // height of sticky nav
+            const bodyRect = document.body.getBoundingClientRect().top;
+            const elementRect = el.getBoundingClientRect().top;
+            const elementPosition = elementRect - bodyRect;
+            const offsetPosition = elementPosition - offset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: "smooth"
+            });
+            
+            // Close mobile menu if open
+            document.getElementById('mobile-menu').classList.add('hidden');
+        }
+
+        function setupMobileMenu() {
+            const btn = document.getElementById('mobile-menu-btn');
+            const menu = document.getElementById('mobile-menu');
+            btn.addEventListener('click', () => {
+                menu.classList.toggle('hidden');
+            });
+        }
+
+        // 2. Chart Logic (Comparison)
+        function initChart() {
+            const ctx = document.getElementById('transportChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['方案A: 火車+船', '方案B: 火車+飛機'],
+                    datasets: [
+                        {
+                            label: '預估費用 (TWD/人)',
+                            data: [2150, 3800],
+                            backgroundColor: 'rgba(14, 165, 233, 0.7)', // Sky-500
+                            borderColor: 'rgb(14, 165, 233)',
+                            borderWidth: 1,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: '單程總耗時 (分鐘)',
+                            data: [300, 260], // Train (240) + Boat/Wait (60) vs Train (240) + Plane/Wait (20)
+                            // Note: Plane saves time on the island leg, but train time is fixed. 
+                            // Boat: 4hr Train + 20min Transfer + 50min Boat = ~310
+                            // Plane: 4hr Train + 20min Transfer + 15min Plane = ~275
+                            // Realistically the diff is small due to train.
+                            backgroundColor: 'rgba(244, 63, 94, 0.7)', // Rose-500
+                            borderColor: 'rgb(244, 63, 94)',
+                            borderWidth: 1,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y + (context.datasetIndex === 0 ? ' 元' : ' 分');
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: '費用 (TWD)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: '時間 (分鐘)' },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                    }
+                }
+            });
+        }
+
+        // 3. Accommodation Render
+        function renderAccommodation() {
+            const container = document.querySelector('#accommodation .grid');
+            let html = '';
+            accommodationData.forEach(hotel => {
+                html += `
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow border border-slate-100 flex flex-col">
+                    <div class="h-32 bg-slate-200 flex items-center justify-center relative">
+                        <!-- Mock Image Placeholder using FontAwesome -->
+                        <i class="fa-solid fa-bed text-4xl text-slate-300"></i>
+                        <div class="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded text-xs font-bold text-slate-700">
+                            ${hotel.price}
+                        </div>
+                    </div>
+                    <div class="p-5 flex-grow flex flex-col">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-slate-800">${hotel.name}</h3>
+                            <span class="text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded-full whitespace-nowrap">${hotel.area}</span>
+                        </div>
+                        <div class="mb-3 flex gap-2">
+                            ${hotel.tags.map(tag => `<span class="text-xs text-slate-500 border border-slate-200 px-1 rounded">${tag}</span>`).join('')}
+                        </div>
+                        <p class="text-sm text-slate-600 mb-4 flex-grow">${hotel.desc}</p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('綠島 ' + hotel.name)}" target="_blank" class="text-center w-full block py-2 rounded border border-sky-500 text-sky-600 hover:bg-sky-50 transition-colors text-sm font-medium">
+                            <i class="fa-solid fa-map-location-dot"></i> 查看位置
+                        </a>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // 4. Itinerary Render
+        function renderItinerary(day) {
+            // Update Tabs
+            document.querySelectorAll('.day-tab').forEach(btn => {
+                if (parseInt(btn.dataset.day) === day) {
+                    btn.classList.add('tab-active');
+                    btn.classList.remove('text-slate-500');
+                } else {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('text-slate-500');
+                }
+            });
+
+            // Render Content
+            const container = document.getElementById('itinerary-content');
+            const items = itineraryData[day];
+            let html = `<div class="timeline-line relative pl-8 space-y-8 my-8">`;
+            
+            items.forEach(item => {
+                html += `
+                <div class="relative group">
+                    <!-- Dot -->
+                    <div class="absolute -left-[41px] top-1 w-6 h-6 bg-white border-4 border-sky-400 rounded-full z-10 group-hover:scale-110 transition-transform"></div>
+                    
+                    <!-- Card -->
+                    <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                                <span class="bg-slate-100 text-slate-600 font-mono font-bold px-2 py-1 rounded text-sm">${item.time}</span>
+                                <h3 class="text-lg font-bold text-slate-800">${item.title}</h3>
+                            </div>
+                            <div class="text-sky-500 text-xl mt-2 sm:mt-0"><i class="fa-solid ${item.icon}"></i></div>
+                        </div>
+                        <p class="text-slate-600 text-sm mb-3">${item.desc}</p>
+                        ${item.loc ? `
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('綠島 ' + item.loc)}" target="_blank" class="inline-flex items-center text-xs text-sky-600 hover:underline">
+                            <i class="fa-solid fa-location-arrow mr-1"></i> 導航至：${item.loc}
+                        </a>` : ''}
+                    </div>
+                </div>`;
+            });
+
+            html += `</div>`;
+            
+            // Add Fade in effect
+            container.style.opacity = 0;
+            container.innerHTML = html;
+            setTimeout(() => {
+                container.style.transition = 'opacity 0.3s ease';
+                container.style.opacity = 1;
+            }, 50);
+        }
+
+        // Tab Click Listeners
+        document.querySelectorAll('.day-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                renderItinerary(parseInt(e.target.dataset.day));
+            });
+        });
+
+        // 5. Food Render & Filter
+        function renderFood(filter) {
+            const container = document.getElementById('food-grid');
+            const buttons = document.querySelectorAll('.food-filter-btn');
+            
+            // Update buttons
+            buttons.forEach(btn => {
+                if(btn.dataset.filter === filter) {
+                    btn.classList.add('bg-sky-100', 'text-sky-700', 'ring-2', 'ring-sky-200');
+                    btn.classList.remove('bg-slate-100', 'text-slate-600');
+                } else {
+                    btn.classList.remove('bg-sky-100', 'text-sky-700', 'ring-2', 'ring-sky-200');
+                    btn.classList.add('bg-slate-100', 'text-slate-600');
+                }
+            });
+
+            // Filter Data
+            const items = filter === 'all' ? foodData : foodData.filter(item => item.type === filter);
+            
+            let html = '';
+            items.forEach(item => {
+                let icon = 'fa-utensils';
+                if(item.type === 'dessert') icon = 'fa-ice-cream';
+                if(item.type === 'snack') icon = 'fa-cookie-bite';
+
+                html += `
+                <div class="bg-slate-50 p-5 rounded-lg border border-slate-200 hover:bg-white hover:border-sky-200 hover:shadow-md transition-all group">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-slate-800">${item.name}</h4>
+                        <i class="fa-solid ${icon} text-slate-300 group-hover:text-sky-400 transition-colors"></i>
+                    </div>
+                    <p class="text-sm text-slate-500 mb-4 min-h-[40px]">${item.desc}</p>
+                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('綠島 ' + item.loc)}" target="_blank" class="text-xs text-sky-600 hover:underline flex items-center gap-1">
+                        <i class="fa-solid fa-map-pin"></i> Google Maps
+                    </a>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        window.filterFood = renderFood; // Expose to global scope for HTML onclick
+
+        // 6. Checklist Render
+        function renderChecklist() {
+            const docList = document.getElementById('checklist-docs');
+            const itemList = document.getElementById('checklist-items');
+
+            const createItem = (text) => `
+                <li class="flex items-start gap-3">
+                    <input type="checkbox" class="mt-1 w-5 h-5 rounded border-slate-500 text-sky-600 focus:ring-sky-500 cursor-pointer">
+                    <span class="text-slate-200 hover:text-white transition-colors cursor-default">${text}</span>
+                </li>`;
+
+            docList.innerHTML = checklistData.docs.map(createItem).join('');
+            itemList.innerHTML = checklistData.items.map(createItem).join('');
+        }
+
+    </script>
+</body>
+</html>
